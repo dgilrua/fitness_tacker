@@ -76,6 +76,19 @@ max_features = 10
     max_features, X_train, y_train
 )"""
 
+ordered_scores = [
+    0.885556704584626,
+    0.9886246122026887,
+    0.9955187866253016,
+    0.9975870389520854,
+    0.9982764563943468,
+    0.9993105825577387,
+    0.9993105825577387,
+    0.9993105825577387,
+    0.9993105825577387,
+    0.9993105825577387,
+]
+
 fig, ax = plt.subplots(figsize=(10, 7))
 plt.plot(range(1, max_features + 1), ordered_scores, marker="o")
 plt.xticks(range(1, max_features + 1))
