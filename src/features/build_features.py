@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from DataTransformation import LowPassFilter, PrincipalComponentAnalysis
 from TemporalAbstraction import NumericalAbstraction
-
+from FrequencyAbstraction import FourierTransformation
 
 # --------------------------------------------------------------
 # Load data
@@ -53,7 +53,7 @@ cutoff = 1.4
 
 df_lowpass = LowPass.low_pass_filter(df_lowpass, "acc_x", fs, cutoff)
 
-subset = df_lowpass[df_lowpass["set"] == 45]
+subset = df_lowpass[df_lowpass["set"] == 30]
 fig, ax = plt.subplots(2, sharex=True)
 ax[0].plot(subset["acc_x"].reset_index(drop=True), label="raw data")
 ax[1].plot(subset["acc_x_lowpass"].reset_index(drop=True), label="lowpass")
@@ -111,11 +111,43 @@ subset[["acc_r", "gyr_r"]].plot(subplots=True, figsize=(20, 10))
 # Temporal abstraction
 # --------------------------------------------------------------
 
+df_temp = df_squared.copy()
+
+ws = int(1000 / 100)
+NumAbs = NumericalAbstraction()
+
+predictor_cols = predictor_cols + ["acc_r", "gyr_r"]
+
+df_temporal_list = []
+
+for s in df_temp["set"].unique():
+    subset = df_temp[df_temp["set"] == s].copy()
+    for col in predictor_cols:
+        subset = NumAbs.abstract_numerical(subset, [col], ws, "mean")
+        subset = NumAbs.abstract_numerical(subset, [col], ws, "std")
+    df_temporal_list.append(subset)
+
+df_temp = pd.concat(df_temporal_list)
+
+fig, ax = plt.subplots(figsize=(20, 10))
+df_temp[df_temp["set"] == 14][
+    ["acc_r", "acc_r_temp_mean_ws_10", "acc_r_temp_std_ws_10"]
+].plot(ax=ax)
+ax.legend(
+    loc="upper center", bbox_to_anchor=(0.5, 0.5), shadow=True, fancybox=True, ncol=3
+)
 
 # --------------------------------------------------------------
 # Frequency features
 # --------------------------------------------------------------
 
+df_freq = df_temp.copy().reset_index()
+FourTrans = FourierTransformation()
+
+fs = int(1000 / 100)
+ws = int(2800 / 100)
+
+df_freq_list = []
 
 # --------------------------------------------------------------
 # Dealing with overlapping windows
