@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from DataTransformation import LowPassFilter, PrincipalComponentAnalysis
 from TemporalAbstraction import NumericalAbstraction
 from FrequencyAbstraction import FourierTransformation
+from sklearn.cluster import KMeans
 
 # --------------------------------------------------------------
 # Load data
@@ -48,8 +49,8 @@ duration_df.iloc[1] / 10
 df_lowpass = df.copy()
 LowPass = LowPassFilter()
 
-fs = 1000 / 100
-cutoff = 1.4
+fs = 1000 / 200
+cutoff = 1.2
 
 df_lowpass = LowPass.low_pass_filter(df_lowpass, "acc_x", fs, cutoff)
 
@@ -113,7 +114,7 @@ subset[["acc_r", "gyr_r"]].plot(subplots=True, figsize=(20, 10))
 
 df_temp = df_squared.copy()
 
-ws = int(1000 / 100)
+ws = int(1000 / 200)
 NumAbs = NumericalAbstraction()
 
 predictor_cols = predictor_cols + ["acc_r", "gyr_r"]
@@ -131,7 +132,7 @@ df_temp = pd.concat(df_temporal_list)
 
 fig, ax = plt.subplots(figsize=(20, 10))
 df_temp[df_temp["set"] == 14][
-    ["acc_r", "acc_r_temp_mean_ws_10", "acc_r_temp_std_ws_10"]
+    ["acc_r", "acc_r_temp_mean_ws_5", "acc_r_temp_std_ws_5"]
 ].plot(ax=ax)
 ax.legend(
     loc="upper center", bbox_to_anchor=(0.5, 0.5), shadow=True, fancybox=True, ncol=3
@@ -144,21 +145,74 @@ ax.legend(
 df_freq = df_temp.copy().reset_index()
 FourTrans = FourierTransformation()
 
-fs = int(1000 / 100)
-ws = int(2800 / 100)
+fs = int(1000 / 200)
+ws = int(2800 / 200)
 
 df_freq_list = []
 
+for s in df_freq["set"].unique():
+    subset = df_freq[df_freq["set"] == s].reset_index().copy()
+    subset = FourTrans.abstract_frequency(subset, predictor_cols, ws, fs)
+    df_freq_list.append(subset)
+
+df_freq = pd.concat(df_freq_list).set_index("epoch (ms)")
+df_freq.drop("index", axis=1, inplace=True)
 # --------------------------------------------------------------
 # Dealing with overlapping windows
 # --------------------------------------------------------------
 
+df_freq = df_freq.dropna()
+df_freq = df_freq.iloc[::2]
 
 # --------------------------------------------------------------
 # Clustering
 # --------------------------------------------------------------
 
+df_cluster = df_freq.copy()
+cluster_cols = ["acc_x", "acc_y", "acc_z"]
+k_values = range(2, 10)
+inertia = []
+
+for k in k_values:
+    subset = df_cluster[cluster_cols]
+    kmeans = KMeans(n_clusters=k, random_state=0, n_init=20)
+    cluster_labels = kmeans.fit_predict(subset)
+    inertia.append(kmeans.inertia_)
+
+fig, ax = plt.subplots(figsize=(10, 10))
+plt.plot(k_values, inertia, marker="o")
+plt.xlabel("k clusters")
+plt.ylabel("inertia")
+plt.show()
+
+kmeans = KMeans(n_clusters=5, random_state=0, n_init=20)
+subset = df_cluster[cluster_cols]
+df_cluster["cluster"] = kmeans.fit_predict(subset)
+
+fig = plt.figure(figsize=(25, 25))
+ax = fig.add_subplot(projection="3d")
+for c in df_cluster["cluster"].unique():
+    subset = df_cluster[df_cluster["cluster"] == c]
+    ax.scatter(subset["acc_x"], subset["acc_y"], subset["acc_z"], label=c)
+ax.set_xlabel("acc_x")
+ax.set_ylabel("acc_y")
+ax.set_zlabel("acc_z")
+plt.legend()
+plt.show()
+
+fig = plt.figure(figsize=(25, 25))
+ax = fig.add_subplot(projection="3d")
+for label in df_cluster["label"].unique():
+    subset = df_cluster[df_cluster["label"] == label]
+    ax.scatter(subset["acc_x"], subset["acc_y"], subset["acc_z"], label=label)
+ax.set_xlabel("acc_x")
+ax.set_ylabel("acc_y")
+ax.set_zlabel("acc_z")
+plt.legend(fontsize="30", loc="lower right")
+plt.show()
 
 # --------------------------------------------------------------
 # Export dataset
 # --------------------------------------------------------------
+
+df_cluster.to_pickle("../../data/interim/data_clustered.pkl")

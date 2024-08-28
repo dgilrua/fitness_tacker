@@ -165,7 +165,7 @@ sampling = {
 days = [g for n, g in df_merged.groupby(pd.Grouper(freq="D"))]
 
 data_resampled = pd.concat(
-    [df.resample("100ms").apply(sampling).dropna() for df in days]
+    [df.resample("200ms").apply(sampling).dropna() for df in days]
 )
 
 data_resampled["set"] = data_resampled["set"].astype(int)
