@@ -119,6 +119,8 @@ feature_names = [
 
 iterations = 1
 
+score_df = pd.DataFrame()
+
 for i, f in zip(range(len(possible_feature_sets)), feature_names):
     print("Feature set:", i)
     selected_train_X = X_train[possible_feature_sets[i]]
