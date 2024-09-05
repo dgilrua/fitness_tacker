@@ -183,21 +183,21 @@ class ClassificationAlgorithms:
                 Input(shape=(n_features,)),
                 Reshape((1, n_features)),
                 LSTM(128, return_sequences=True),
-                Dropout(0.5),
+                Dropout(0.2),
                 LSTM(64),
-                Dense(32, activation="relu"),
+                Dense(64, activation="relu"),
                 Dense(n_classes, activation="softmax"),
             ]
         )
 
         model.compile(
-            optimizer=Adam(learning_rate=0.01),
+            optimizer=Adam(learning_rate=0.0001),
             loss="categorical_crossentropy",
             metrics=["accuracy"],
         )
 
         history = model.fit(
-            X_train, y_train, validation_split=0.2, epochs=20, batch_size=32
+            X_train, y_train, validation_split=0.2, epochs=30, batch_size=32
         )
 
         predictions = model.predict(X_test)
@@ -217,19 +217,18 @@ class ClassificationAlgorithms:
         model = Sequential(
             [
                 Input(shape=(n_features,)),
-                Dense(256, activation="relu"),
-                Dropout(0.3),
                 Dense(128, activation="relu"),
                 Dropout(0.3),
                 Dense(64, activation="relu"),
                 Dropout(0.3),
                 Dense(32, activation="relu"),
+                Dropout(0.3),
                 Dense(n_classes, activation="softmax"),
             ]
         )
 
         model.compile(
-            optimizer=Adam(learning_rate=0.01),
+            optimizer=Adam(learning_rate=0.0001),
             loss="categorical_crossentropy",
             metrics=["accuracy"],
         )
@@ -260,17 +259,17 @@ class ClassificationAlgorithms:
         model = Sequential(
             [
                 Input(shape=(n_features, 1)),
-                Conv1D(filters=64, kernel_size=3, activation="relu", padding="same"),
-                Conv1D(filters=32, kernel_size=3, activation="relu", padding="same"),
+                Conv1D(filters=64, kernel_size=5, activation="relu", padding="same"),
+                Conv1D(filters=32, kernel_size=5, activation="relu", padding="same"),
                 GlobalMaxPooling1D(),
                 Dense(64, activation="relu"),
-                Dropout(0.3),
+                Dropout(0.5),
                 Dense(n_classes, activation="softmax"),
             ]
         )
 
         model.compile(
-            optimizer=Adam(learning_rate=0.01),
+            optimizer=Adam(learning_rate=0.001),
             loss="categorical_crossentropy",
             metrics=["accuracy"],
         )
@@ -284,3 +283,75 @@ class ClassificationAlgorithms:
         predictions = label_encoder.inverse_transform(predictions)
 
         return predictions
+
+    def feedforward_neural_network(
+        self,
+        train_X,
+        train_y,
+        test_X,
+        hidden_layer_sizes=(100,),
+        max_iter=2000,
+        activation="logistic",
+        alpha=0.0001,
+        learning_rate="adaptive",
+        gridsearch=False,
+        print_model_details=False,
+    ):
+
+        if gridsearch:
+            tuned_parameters = [
+                {
+                    "hidden_layer_sizes": [
+                        (5,),
+                        (10,),
+                        (25,),
+                        (100,),
+                        (
+                            100,
+                            5,
+                        ),
+                        (
+                            100,
+                            10,
+                        ),
+                    ],
+                    "activation": [activation],
+                    "learning_rate": [learning_rate],
+                    "max_iter": [1000, 2000],
+                    "alpha": [alpha],
+                }
+            ]
+            nn = GridSearchCV(
+                MLPClassifier(), tuned_parameters, cv=5, scoring="accuracy"
+            )
+        else:
+            # Create the model
+            nn = MLPClassifier(
+                hidden_layer_sizes=hidden_layer_sizes,
+                activation=activation,
+                max_iter=max_iter,
+                learning_rate=learning_rate,
+                alpha=alpha,
+            )
+
+        # Fit the model
+        nn.fit(
+            train_X,
+            train_y.values.ravel(),
+        )
+
+        if gridsearch and print_model_details:
+            print(nn.best_params_)
+
+        if gridsearch:
+            nn = nn.best_estimator_
+
+        # Apply the model
+        pred_prob_training_y = nn.predict_proba(train_X)
+        pred_prob_test_y = nn.predict_proba(test_X)
+        pred_training_y = nn.predict(train_X)
+        pred_test_y = nn.predict(test_X)
+        frame_prob_training_y = pd.DataFrame(pred_prob_training_y, columns=nn.classes_)
+        frame_prob_test_y = pd.DataFrame(pred_prob_test_y, columns=nn.classes_)
+
+        return pred_test_y

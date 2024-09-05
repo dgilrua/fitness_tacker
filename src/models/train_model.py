@@ -63,7 +63,7 @@ selected_features = [
     "gyr_z_max_freq",
     "acc_z_freq_2.143_Hz_ws_14",
     "acc_z_freq_2.5_Hz_ws_14",
-    "gyr_y_pse",
+    "pca_1",
 ]
 
 # --------------------------------------------------------------
@@ -121,8 +121,8 @@ feature_names = [
 
 iterations = 1
 
-score_df = pd.DataFrame()
-
+score_df = pd.read_pickle("../../data/interim/accuracy_df.pkl")
+"""
 for i, f in zip(range(len(possible_feature_sets)), feature_names):
     print("Feature set:", i)
     selected_train_X = X_train[possible_feature_sets[i]]
@@ -159,25 +159,65 @@ for i, f in zip(range(len(possible_feature_sets)), feature_names):
     )
     score_df = pd.concat([score_df, new_scores])
 
+score_df.sort_values("accuracy", ascending=False, inplace=True)
+score_df.to_pickle("../../data/interim/accuracy_df.pkl")
+"""
 # --------------------------------------------------------------
 # Create a grouped bar plot to compare the results
 # --------------------------------------------------------------
 
+fig, ax = plt.subplots(figsize=(20, 7))
+sns.barplot(data=score_df, x="feature_set", y="accuracy", hue="model", ax=ax)
 
 # --------------------------------------------------------------
 # Select best model and evaluate results
 # --------------------------------------------------------------
 
+class_test_y_lstm = learner.LSTM_nn(X_train[features_4], y_train, X_test[features_4])
+performance_test_lstm = accuracy_score(y_test, class_test_y_lstm)
+classes = y_test.unique()
+cm = confusion_matrix(y_test, class_test_y_lstm, labels=classes)
+
+# create confusion matrix for cm
+plt.figure(figsize=(13, 13))
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=classes,
+    yticklabels=classes,
+    square=True,
+)
+plt.title("Confusion matrix", pad=20, fontsize=30)
+plt.ylabel("True label", labelpad=10)
+plt.xlabel("Predicted label", labelpad=10)
+plt.show()
 
 # --------------------------------------------------------------
 # Select train and test data based on participant
 # --------------------------------------------------------------
 
+participant_df = df.drop(["category", "set", "duration"], axis=1)
+X_train = participant_df[participant_df["participant"] != "A"].drop("label", axis=1)
+y_train = participant_df[participant_df["participant"] != "A"]["label"]
+
+X_test = participant_df[participant_df["participant"] == "A"].drop("label", axis=1)
+y_test = participant_df[participant_df["participant"] == "A"]["label"]
+
+X_train = X_train.drop("participant", axis=1)
+X_test = X_test.drop("participant", axis=1)
 
 # --------------------------------------------------------------
 # Use best model again and evaluate results
 # --------------------------------------------------------------
 
+class_test_y_lstm_participant = learner.feedforward_neural_network(
+    X_train[features_4], y_train, X_test[features_4]
+)
+performance_test_lstm_participant = accuracy_score(
+    y_test, class_test_y_lstm_participant
+)
 
 # --------------------------------------------------------------
 # Try a simpler model with the selected features
