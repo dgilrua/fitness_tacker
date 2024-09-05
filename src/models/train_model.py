@@ -219,6 +219,20 @@ performance_test_lstm_participant = accuracy_score(
     y_test, class_test_y_lstm_participant
 )
 
-# --------------------------------------------------------------
-# Try a simpler model with the selected features
-# --------------------------------------------------------------
+cm = confusion_matrix(y_test, class_test_y_lstm_participant, labels=classes)
+
+# create confusion matrix for cm
+plt.figure(figsize=(13, 13))
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=classes,
+    yticklabels=classes,
+    square=True,
+)
+plt.title("Confusion matrix", pad=20, fontsize=30)
+plt.ylabel("True label", labelpad=10)
+plt.xlabel("Predicted label", labelpad=10)
+plt.show()

@@ -17,7 +17,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 import tensorflow as tf
@@ -35,6 +35,8 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.callbacks import EarlyStopping
 import pandas as pd
 import numpy as np
 import copy
@@ -208,12 +210,18 @@ class ClassificationAlgorithms:
 
     def NN(self, X_train, y_train, X_test):
 
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+
         label_encoder = LabelEncoder()
         y_train_encoded = label_encoder.fit_transform(y_train)
-        y_train = to_categorical(y_train_encoded)
-        n_classes = len(label_encoder.classes_)
-        n_features = len(X_train.columns)
+        y_train_categorical = to_categorical(y_train_encoded)
 
+        n_classes = len(label_encoder.classes_)
+        n_features = X_train.shape[1]
+
+        # Creación del modelo
         model = Sequential(
             [
                 Input(shape=(n_features,)),
@@ -222,22 +230,33 @@ class ClassificationAlgorithms:
                 Dense(64, activation="relu"),
                 Dropout(0.3),
                 Dense(32, activation="relu"),
-                Dropout(0.3),
                 Dense(n_classes, activation="softmax"),
             ]
         )
 
+        # Compilación del modelo
         model.compile(
-            optimizer=Adam(learning_rate=0.0001),
+            optimizer=Adam(learning_rate=0.001),
             loss="categorical_crossentropy",
             metrics=["accuracy"],
         )
 
-        history = model.fit(
-            X_train, y_train, validation_split=0.2, epochs=30, batch_size=32
+        # Entrenamiento con early stopping
+        early_stopping = tf.keras.callbacks.EarlyStopping(
+            monitor="val_loss", patience=10, restore_best_weights=True
         )
 
-        predictions = model.predict(X_test)
+        history = model.fit(
+            X_train_scaled,
+            y_train_categorical,
+            validation_split=0.2,
+            epochs=100,
+            batch_size=20,
+            callbacks=[early_stopping],
+        )
+
+        # Predicciones
+        predictions = model.predict(X_test_scaled)
         predictions = np.argmax(predictions, axis=1)
         predictions = label_encoder.inverse_transform(predictions)
 
