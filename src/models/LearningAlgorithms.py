@@ -17,14 +17,30 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import (
+    LSTM,
+    Dense,
+    Input,
+    Reshape,
+    Dropout,
+    MaxPooling1D,
+    Conv1D,
+    Flatten,
+    GlobalMaxPooling1D,
+)
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.utils import to_categorical
 import pandas as pd
 import numpy as np
 import copy
 
 
-class ClassificationAlgorithms:
+class ForwardSelection:
 
     # Forward selection for classification which selects a pre-defined number of features (max_features)
     # that show the best accuracy. We assume a decision tree learning for this purpose, but
@@ -34,7 +50,7 @@ class ClassificationAlgorithms:
         ordered_features = []
         ordered_scores = []
         selected_features = []
-        ca = ClassificationAlgorithms()
+        ca = ForwardSelection()
         prev_best_perf = 0
 
         # Select the appropriate number of features.
@@ -76,82 +92,6 @@ class ClassificationAlgorithms:
             ordered_features.append(best_feature)
             ordered_scores.append(best_perf)
         return selected_features, ordered_features, ordered_scores
-
-    # Apply a neural network for classification upon the training data (with the specified composition of
-    # hidden layers and number of iterations), and use the created network to predict the outcome for both the
-    # test and training set. It returns the categorical predictions for the training and test set as well as the
-    # probabilities associated with each class, each class being represented as a column in the data frame.
-    def feedforward_neural_network(
-        self,
-        train_X,
-        train_y,
-        test_X,
-        hidden_layer_sizes=(100,),
-        max_iter=2000,
-        activation="logistic",
-        alpha=0.0001,
-        learning_rate="adaptive",
-        gridsearch=True,
-        print_model_details=False,
-    ):
-
-        if gridsearch:
-            tuned_parameters = [
-                {
-                    "hidden_layer_sizes": [
-                        (5,),
-                        (10,),
-                        (25,),
-                        (100,),
-                        (
-                            100,
-                            5,
-                        ),
-                        (
-                            100,
-                            10,
-                        ),
-                    ],
-                    "activation": [activation],
-                    "learning_rate": [learning_rate],
-                    "max_iter": [1000, 2000],
-                    "alpha": [alpha],
-                }
-            ]
-            nn = GridSearchCV(
-                MLPClassifier(), tuned_parameters, cv=5, scoring="accuracy"
-            )
-        else:
-            # Create the model
-            nn = MLPClassifier(
-                hidden_layer_sizes=hidden_layer_sizes,
-                activation=activation,
-                max_iter=max_iter,
-                learning_rate=learning_rate,
-                alpha=alpha,
-            )
-
-        # Fit the model
-        nn.fit(
-            train_X,
-            train_y.values.ravel(),
-        )
-
-        if gridsearch and print_model_details:
-            print(nn.best_params_)
-
-        if gridsearch:
-            nn = nn.best_estimator_
-
-        # Apply the model
-        pred_prob_training_y = nn.predict_proba(train_X)
-        pred_prob_test_y = nn.predict_proba(test_X)
-        pred_training_y = nn.predict(train_X)
-        pred_test_y = nn.predict(test_X)
-        frame_prob_training_y = pd.DataFrame(pred_prob_training_y, columns=nn.classes_)
-        frame_prob_test_y = pd.DataFrame(pred_prob_test_y, columns=nn.classes_)
-
-        return pred_training_y, pred_test_y, frame_prob_training_y, frame_prob_test_y
 
     def decision_tree(
         self,
@@ -227,3 +167,120 @@ class ClassificationAlgorithms:
             )
 
         return pred_training_y, pred_test_y, frame_prob_training_y, frame_prob_test_y
+
+
+class ClassificationAlgorithms:
+    def LSTM_nn(self, X_train, y_train, X_test):
+
+        label_encoder = LabelEncoder()
+        y_train_encoded = label_encoder.fit_transform(y_train)
+        y_train = to_categorical(y_train_encoded)
+        n_classes = len(label_encoder.classes_)
+        n_features = len(X_train.columns)
+
+        model = Sequential(
+            [
+                Input(shape=(n_features,)),
+                Reshape((1, n_features)),
+                LSTM(128, return_sequences=True),
+                Dropout(0.5),
+                LSTM(64),
+                Dense(32, activation="relu"),
+                Dense(n_classes, activation="softmax"),
+            ]
+        )
+
+        model.compile(
+            optimizer=Adam(learning_rate=0.01),
+            loss="categorical_crossentropy",
+            metrics=["accuracy"],
+        )
+
+        history = model.fit(
+            X_train, y_train, validation_split=0.2, epochs=20, batch_size=32
+        )
+
+        predictions = model.predict(X_test)
+        predictions = np.argmax(predictions, axis=1)
+        predictions = label_encoder.inverse_transform(predictions)
+
+        return predictions
+
+    def NN(self, X_train, y_train, X_test):
+
+        label_encoder = LabelEncoder()
+        y_train_encoded = label_encoder.fit_transform(y_train)
+        y_train = to_categorical(y_train_encoded)
+        n_classes = len(label_encoder.classes_)
+        n_features = len(X_train.columns)
+
+        model = Sequential(
+            [
+                Input(shape=(n_features,)),
+                Dense(256, activation="relu"),
+                Dropout(0.3),
+                Dense(128, activation="relu"),
+                Dropout(0.3),
+                Dense(64, activation="relu"),
+                Dropout(0.3),
+                Dense(32, activation="relu"),
+                Dense(n_classes, activation="softmax"),
+            ]
+        )
+
+        model.compile(
+            optimizer=Adam(learning_rate=0.01),
+            loss="categorical_crossentropy",
+            metrics=["accuracy"],
+        )
+
+        history = model.fit(
+            X_train, y_train, validation_split=0.2, epochs=30, batch_size=32
+        )
+
+        predictions = model.predict(X_test)
+        predictions = np.argmax(predictions, axis=1)
+        predictions = label_encoder.inverse_transform(predictions)
+
+        return predictions
+
+    def CNN(self, X_train, y_train, X_test):
+
+        label_encoder = LabelEncoder()
+        y_train_encoded = label_encoder.fit_transform(y_train)
+        y_train = to_categorical(y_train_encoded)
+        n_classes = len(label_encoder.classes_)
+        n_features = len(X_train.columns)
+
+        X_train_reshaped = X_train.values.reshape(
+            (X_train.shape[0], X_train.shape[1], 1)
+        )
+        X_test_reshaped = X_test.values.reshape((X_test.shape[0], X_test.shape[1], 1))
+
+        model = Sequential(
+            [
+                Input(shape=(n_features, 1)),
+                Conv1D(filters=64, kernel_size=3, activation="relu", padding="same"),
+                Conv1D(filters=32, kernel_size=3, activation="relu", padding="same"),
+                GlobalMaxPooling1D(),
+                Dense(64, activation="relu"),
+                Dropout(0.3),
+                Dense(n_classes, activation="softmax"),
+            ]
+        )
+
+        model.compile(
+            optimizer=Adam(learning_rate=0.01),
+            loss="categorical_crossentropy",
+            metrics=["accuracy"],
+        )
+
+        history = model.fit(
+            X_train_reshaped, y_train, validation_split=0.2, epochs=30, batch_size=32
+        )
+
+        predictions = model.predict(X_test_reshaped)
+        predictions = np.argmax(predictions, axis=1)
+        predictions = label_encoder.inverse_transform(predictions)
+
+        return predictions

@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
-from LearningAlgorithms import ClassificationAlgorithms
+from LearningAlgorithms import ClassificationAlgorithms, ForwardSelection
 import seaborn as sns
 import itertools
 from sklearn.metrics import accuracy_score, confusion_matrix
@@ -71,8 +71,10 @@ selected_features = [
 # --------------------------------------------------------------
 
 learner = ClassificationAlgorithms()
+selection = ForwardSelection()
+
 max_features = 10
-"""selected_features, ordered_features, ordered_scores = learner.forward_selection(
+"""selected_features, ordered_features, ordered_scores = selection.forward_selection(
     max_features, X_train, y_train
 )"""
 
@@ -126,84 +128,32 @@ for i, f in zip(range(len(possible_feature_sets)), feature_names):
     selected_train_X = X_train[possible_feature_sets[i]]
     selected_test_X = X_test[possible_feature_sets[i]]
 
-    # First run non deterministic classifiers to average their score.
-    performance_test_nn = 0
-    performance_test_rf = 0
+    performance_test_lstm = 0
 
-    for it in range(0, iterations):
-        print("\tTraining neural network,", it)
-        (
-            class_train_y,
-            class_test_y,
-            class_train_prob_y,
-            class_test_prob_y,
-        ) = learner.feedforward_neural_network(
-            selected_train_X,
-            y_train,
-            selected_test_X,
-            gridsearch=False,
-        )
-        performance_test_nn += accuracy_score(y_test, class_test_y)
+    print("\tTraining LSTM,")
 
-        print("\tTraining random forest,", it)
-        (
-            class_train_y,
-            class_test_y,
-            class_train_prob_y,
-            class_test_prob_y,
-        ) = learner.random_forest(
-            selected_train_X, y_train, selected_test_X, gridsearch=True
-        )
-        performance_test_rf += accuracy_score(y_test, class_test_y)
+    class_test_y_lstm = learner.LSTM_nn(selected_train_X, y_train, selected_test_X)
+    performance_test_lstm = accuracy_score(y_test, class_test_y_lstm)
 
-    performance_test_nn = performance_test_nn / iterations
-    performance_test_rf = performance_test_rf / iterations
+    print("\tTraining NN,")
 
-    # And we run our deterministic classifiers:
-    print("\tTraining KNN")
-    (
-        class_train_y,
-        class_test_y,
-        class_train_prob_y,
-        class_test_prob_y,
-    ) = learner.k_nearest_neighbor(
-        selected_train_X, y_train, selected_test_X, gridsearch=True
-    )
-    performance_test_knn = accuracy_score(y_test, class_test_y)
+    class_test_y_nn = learner.NN(selected_train_X, y_train, selected_test_X)
+    performance_test_nn = accuracy_score(y_test, class_test_y_nn)
 
-    print("\tTraining decision tree")
-    (
-        class_train_y,
-        class_test_y,
-        class_train_prob_y,
-        class_test_prob_y,
-    ) = learner.decision_tree(
-        selected_train_X, y_train, selected_test_X, gridsearch=True
-    )
-    performance_test_dt = accuracy_score(y_test, class_test_y)
+    print("\tTraining CNN,")
 
-    print("\tTraining naive bayes")
-    (
-        class_train_y,
-        class_test_y,
-        class_train_prob_y,
-        class_test_prob_y,
-    ) = learner.naive_bayes(selected_train_X, y_train, selected_test_X)
+    class_test_y_cnn = learner.CNN(selected_train_X, y_train, selected_test_X)
+    performance_test_cnn = accuracy_score(y_test, class_test_y_cnn)
 
-    performance_test_nb = accuracy_score(y_test, class_test_y)
-
-    # Save results to dataframe
-    models = ["NN", "RF", "KNN", "DT", "NB"]
+    models = ["LSTM", "NN", "CNN"]
     new_scores = pd.DataFrame(
         {
             "model": models,
             "feature_set": f,
             "accuracy": [
+                performance_test_lstm,
                 performance_test_nn,
-                performance_test_rf,
-                performance_test_knn,
-                performance_test_dt,
-                performance_test_nb,
+                performance_test_cnn,
             ],
         }
     )
