@@ -14,6 +14,9 @@ Se tiene una estructura de carpetas pre definida que se tomo de otro repositorio
 
 ## Otros repositorios usados:
 > Repositorio de donde se tomaron ciertas funciones: https://github.com/mhoogen/ML4QS
+> 
+<br>
+
 > Repositorio de donde se tomo la estructuracion de carpetas: https://github.com/hardefarogonondo/data-science-project-folder-structure
 
 ## Integrantes:
