@@ -185,15 +185,15 @@ class ClassificationAlgorithms:
                 Input(shape=(n_features,)),
                 Reshape((1, n_features)),
                 LSTM(128, return_sequences=True),
-                Dropout(0.2),
+                Dropout(0.5),
                 LSTM(64),
-                Dense(64, activation="relu"),
+                Dense(32, activation="relu"),
                 Dense(n_classes, activation="softmax"),
             ]
         )
 
         model.compile(
-            optimizer=Adam(learning_rate=0.0001),
+            optimizer=Adam(learning_rate=0.001),
             loss="categorical_crossentropy",
             metrics=["accuracy"],
         )
@@ -203,60 +203,6 @@ class ClassificationAlgorithms:
         )
 
         predictions = model.predict(X_test)
-        predictions = np.argmax(predictions, axis=1)
-        predictions = label_encoder.inverse_transform(predictions)
-
-        return predictions
-
-    def NN(self, X_train, y_train, X_test):
-
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
-
-        label_encoder = LabelEncoder()
-        y_train_encoded = label_encoder.fit_transform(y_train)
-        y_train_categorical = to_categorical(y_train_encoded)
-
-        n_classes = len(label_encoder.classes_)
-        n_features = X_train.shape[1]
-
-        # Creación del modelo
-        model = Sequential(
-            [
-                Input(shape=(n_features,)),
-                Dense(128, activation="relu"),
-                Dropout(0.3),
-                Dense(64, activation="relu"),
-                Dropout(0.3),
-                Dense(32, activation="relu"),
-                Dense(n_classes, activation="softmax"),
-            ]
-        )
-
-        # Compilación del modelo
-        model.compile(
-            optimizer=Adam(learning_rate=0.001),
-            loss="categorical_crossentropy",
-            metrics=["accuracy"],
-        )
-
-        # Entrenamiento con early stopping
-        early_stopping = tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=10, restore_best_weights=True
-        )
-
-        history = model.fit(
-            X_train_scaled,
-            y_train_categorical,
-            validation_split=0.2,
-            epochs=100,
-            batch_size=20,
-            callbacks=[early_stopping],
-        )
-
-        # Predicciones
-        predictions = model.predict(X_test_scaled)
         predictions = np.argmax(predictions, axis=1)
         predictions = label_encoder.inverse_transform(predictions)
 
@@ -344,7 +290,6 @@ class ClassificationAlgorithms:
                 MLPClassifier(), tuned_parameters, cv=5, scoring="accuracy"
             )
         else:
-            # Create the model
             nn = MLPClassifier(
                 hidden_layer_sizes=hidden_layer_sizes,
                 activation=activation,
@@ -353,7 +298,6 @@ class ClassificationAlgorithms:
                 alpha=alpha,
             )
 
-        # Fit the model
         nn.fit(
             train_X,
             train_y.values.ravel(),
@@ -365,7 +309,6 @@ class ClassificationAlgorithms:
         if gridsearch:
             nn = nn.best_estimator_
 
-        # Apply the model
         pred_prob_training_y = nn.predict_proba(train_X)
         pred_prob_test_y = nn.predict_proba(test_X)
         pred_training_y = nn.predict(train_X)
@@ -373,4 +316,4 @@ class ClassificationAlgorithms:
         frame_prob_training_y = pd.DataFrame(pred_prob_training_y, columns=nn.classes_)
         frame_prob_test_y = pd.DataFrame(pred_prob_test_y, columns=nn.classes_)
 
-        return pred_test_y
+        return pred_test_y, nn

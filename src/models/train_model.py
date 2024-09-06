@@ -8,6 +8,7 @@ import seaborn as sns
 import itertools
 from sklearn.metrics import accuracy_score, confusion_matrix
 
+import joblib
 
 # Plot settings
 plt.style.use("fivethirtyeight")
@@ -178,7 +179,6 @@ performance_test_lstm = accuracy_score(y_test, class_test_y_lstm)
 classes = y_test.unique()
 cm = confusion_matrix(y_test, class_test_y_lstm, labels=classes)
 
-# create confusion matrix for cm
 plt.figure(figsize=(13, 13))
 sns.heatmap(
     cm,
@@ -212,16 +212,13 @@ X_test = X_test.drop("participant", axis=1)
 # Use best model again and evaluate results
 # --------------------------------------------------------------
 
-class_test_y_lstm_participant = learner.feedforward_neural_network(
+class_test_y_nn_participant, model = learner.feedforward_neural_network(
     X_train[features_4], y_train, X_test[features_4]
 )
-performance_test_lstm_participant = accuracy_score(
-    y_test, class_test_y_lstm_participant
-)
+performance_test_nn_participant = accuracy_score(y_test, class_test_y_nn_participant)
 
-cm = confusion_matrix(y_test, class_test_y_lstm_participant, labels=classes)
+cm = confusion_matrix(y_test, class_test_y_nn_participant, labels=classes)
 
-# create confusion matrix for cm
 plt.figure(figsize=(13, 13))
 sns.heatmap(
     cm,
@@ -236,3 +233,5 @@ plt.title("Confusion matrix", pad=20, fontsize=30)
 plt.ylabel("True label", labelpad=10)
 plt.xlabel("Predicted label", labelpad=10)
 plt.show()
+
+joblib.dump(model, "../../models/model.pkl")
