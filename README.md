@@ -20,4 +20,4 @@ Se tiene una estructura de carpetas pre definida que se tomo de otro repositorio
 > Repositorio de donde se tomo la estructuracion de carpetas: https://github.com/hardefarogonondo/data-science-project-folder-structure
 
 ## Integrantes:
-- David López López: davlopezlo@unal.edu.co
+- David Gil Rua: dgilr@unal.edu.co
